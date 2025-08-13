@@ -46,6 +46,9 @@
 </div>
 
 <script>
+  // Set your sound file here
+  const foundSoundUrl = "https://www.soundjay.com/buttons/sounds/button-3.mp3";
+
   const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vREoeSXV0fo1U5IXL63I0t4leYsoFRlezJTRt-rC4W9VZOA0wQi_53LqYfm4rpYVMQKghjsoQ9Mj41M/pub?output=csv";
 
   let toteList = [];
@@ -57,8 +60,7 @@
   }
 
   async function loadTotes() {
-    const status = document.getElementById("status");
-    status.textContent = "Fetching tote list…";
+    setStatus("Fetching tote list…", "yellow");
     try {
       const res = await fetch(sheetUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -82,6 +84,12 @@
     statusEl.textContent = msg;
     statusEl.className = "";
     statusEl.classList.add(`status-${type}`);
+  }
+
+  function playSound(url) {
+    if (url) {
+      new Audio(url).play().catch(() => console.warn("Sound play failed"));
+    }
   }
 
   function processTote(id) {
@@ -108,6 +116,7 @@
       document.getElementById("totesFound").textContent = foundCount;
       document.getElementById("totesLeft").textContent = toteList.length - foundCount;
       setStatus(`Tote "${id}" found!`, "green");
+      playSound(foundSoundUrl);
     } else {
       setStatus(`Tote "${id}" not in list.`, "red");
     }
@@ -124,7 +133,7 @@
 
   window.addEventListener("load", () => {
     loadTotes();
-    setInterval(autoScan, 3000); // Every 3 seconds
+    setInterval(autoScan, 700); // Scan every 700ms
   });
 </script>
 

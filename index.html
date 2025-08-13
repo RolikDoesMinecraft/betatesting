@@ -1,134 +1,112 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Google Sheet Row Counter</title>
-  <style>
-    :root { --bg:#0b1020; --card:#121933; --ink:#e9ecf1; --muted:#9aa3b2; --brand:#7c9cff; --ok:#36d399; --warn:#f6c84c; --err:#ff6b6b; }
-    * { box-sizing:border-box; }
-    body { margin:0; font:16px/1.4 system-ui, sans-serif; background:linear-gradient(120deg,#0b1020,#0e1330 55%,#0b1020); color:var(--ink); }
-    .wrap { max-width:1000px; margin:40px auto; padding:24px; }
-    .card { background:var(--card); border:1px solid #1f274a; border-radius:18px; padding:22px; }
-    h1 { margin:0 0 8px; font-size:32px; }
-    p.lead { margin:0 0 18px; color:var(--muted); }
-    label { display:block; font-weight:600; margin:16px 0 6px; }
-    input[type="text"] { width:100%; padding:12px; border-radius:12px; border:1px solid #2a3363; background:#0f1530; color:var(--ink); }
-    button { margin-top:12px; padding:12px 16px; border-radius:12px; background:var(--brand); color:#0a0f22; font-weight:800; cursor:pointer; border:0; }
-    .metrics { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:18px; }
-    .metric { background:#0f1530; border:1px solid #223064; border-radius:14px; padding:14px; }
-    .metric .label { color:var(--muted); font-size:12px; text-transform:uppercase; }
-    .metric .value { font-size:28px; font-weight:900; margin-top:6px; }
-    .ok { color:var(--ok); }
-    .warn { color:var(--warn); }
-    .err { color:var(--err); }
-    .status { margin-top:10px; min-height:22px; color:var(--muted); }
-    table { width:100%; border-collapse:collapse; }
-    th, td { border-bottom:1px solid #23325e; padding:8px 10px; font-size:14px; }
-    th { color:#cfd7ff; background:#121933; }
-    .preview { max-height:300px; overflow:auto; border:1px solid #223064; border-radius:12px; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TSI Locator BETA</title>
+<style>
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#f4f6f8; color:#333; display:flex; flex-direction:column; min-height:100vh;}
+  .hero { background:#2f3e46; color:#fff; padding:20px; text-align:center; }
+  .hero h1 { margin:0; font-size:2rem; }
+  .content { flex:1; max-width:600px; margin:20px auto; background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+  label { display:block; margin-top:15px; font-weight:500; }
+  input[type=text] { width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; margin-top:5px; font-size:1rem; }
+  #status { margin:15px 0; color:#555; font-weight:500; }
+  .metrics { display:flex; flex-wrap:wrap; gap:15px; margin:20px 0; }
+  .metric { background:#edf2f7; flex:1; min-width:150px; padding:20px; border-radius:4px; text-align:center; }
+  .metric .label { font-size:0.9rem; color:#666; }
+  .metric .value { font-size:1.8rem; font-weight:600; margin-top:5px; }
+  .footer { text-align:center; padding:10px; background:#2f3e46; color:#fff; font-size:0.9rem; }
+</style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <h1>Google Sheet → Row Counter</h1>
-    <p class="lead">This sheet is hardcoded. Type something in the Duplicate Check box to reduce the total count if found.</p>
 
-    <label for="dupInput">Duplicate Check Value</label>
-    <input id="dupInput" type="text" placeholder="Type to check duplicates" />
+<div class="hero">
+  <h1>TSI Locator BETA</h1>
+</div>
 
-    <div id="status" class="status">Loading sheet…</div>
+<div class="content">
+  <label for="toteInput">Scan or Enter Tote ID</label>
+  <input id="toteInput" type="text" placeholder="Enter tote ID and press Enter" />
 
-    <div class="metrics">
-      <div class="metric"><div class="label">Rows (incl. header)</div><div id="rowsTotal" class="value">—</div></div>
-      <div class="metric"><div class="label">Rows (excl. header & empty)</div><div id="rowsClean" class="value ok">—</div></div>
-      <div class="metric"><div class="label">Filled cells</div><div id="cellsFilled" class="value warn">—</div></div>
-    </div>
+  <div id="status">Loading totes…</div>
 
-    <details>
-      <summary>Preview</summary>
-      <div class="preview"><table id="previewTable"></table></div>
-    </details>
+  <div class="metrics">
+    <div class="metric"><div class="label">Total Totes</div><div id="totalTotes" class="value">–</div></div>
+    <div class="metric"><div class="label">Totes Left</div><div id="totesLeft" class="value">–</div></div>
+    <div class="metric"><div class="label">Totes Found</div><div id="totesFound" class="value">0</div></div>
   </div>
 </div>
 
+<div class="footer">
+  Made by Rozimnic — TSI Locator BETA
+</div>
+
 <script>
-const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vREoeSXV0fo1U5IXL63I0t4leYsoFRlezJTRt-rC4W9VZOA0wQi_53LqYfm4rpYVMQKghjsoQ9Mj41M/pub?output=csv";
-let loadedRows = [];
+  const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vREoeSXV0fo1U5IXL63I0t4leYsoFRlezJTRt-rC4W9VZOA0wQi_53LqYfm4rpYVMQKghjsoQ9Mj41M/pub?output=csv";
 
-function csvToArray(text) {
-  return text.trim().split("\n").map(r => r.split(","));
-}
+  let toteList = [];
+  let foundSet = new Set();
 
-function isRowEmpty(r) { return !r || r.every(cell => String(cell).trim() === ""); }
-
-function renderPreview(tableEl, rows) {
-  tableEl.innerHTML = "";
-  if (!rows.length) return;
-  const thead = document.createElement('thead');
-  const trh = document.createElement('tr');
-  rows[0].forEach(h => { const th = document.createElement('th'); th.textContent = h; trh.appendChild(th); });
-  thead.appendChild(trh);
-  tableEl.appendChild(thead);
-  const tbody = document.createElement('tbody');
-  rows.slice(1, 201).forEach(r => {
-    const tr = document.createElement('tr');
-    r.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
-    tbody.appendChild(tr);
-  });
-  tableEl.appendChild(tbody);
-}
-
-function updateDuplicateCheck() {
-  const value = document.getElementById('dupInput').value.trim().toLowerCase();
-  const rowsTotalEl = document.getElementById('rowsTotal');
-  if (!loadedRows.length) return;
-  const total = loadedRows.length;
-  if (!value) {
-    rowsTotalEl.textContent = total;
-    return;
+  function csvToArray(text) {
+    return text.trim().split("\n").map(r => r.split(","));
   }
-  let matches = 0;
-  loadedRows.forEach(row => {
-    row.forEach(cell => {
-      if (String(cell).trim().toLowerCase() === value) matches++;
-    });
-  });
-  rowsTotalEl.textContent = total - matches;
-}
 
-async function loadCsv() {
-  const statusEl = document.getElementById('status');
-  statusEl.textContent = 'Fetching CSV…';
-  try {
-    const res = await fetch(sheetUrl);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
-    const rows = csvToArray(text);
-    loadedRows = rows;
+  async function loadTotes() {
+    const status = document.getElementById("status");
+    status.textContent = "Fetching tote list…";
+    try {
+      const res = await fetch(sheetUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const rows = csvToArray(text);
 
-    const dataRows = rows.slice(1);
-    const nonEmptyRows = dataRows.filter(r => !isRowEmpty(r));
-    const filledCells = dataRows.reduce((acc, r) => acc + r.filter(c => String(c).trim() !== "").length, 0);
+      // Get all tote IDs from first column (excluding header)
+      toteList = rows.slice(1).map(r => String(r[0]).trim().toLowerCase()).filter(id => id);
 
-    document.getElementById('rowsTotal').textContent = rows.length;
-    document.getElementById('rowsClean').textContent = nonEmptyRows.length;
-    document.getElementById('cellsFilled').textContent = filledCells;
-    statusEl.textContent = `Loaded ${rows.length} rows`;
+      document.getElementById("totalTotes").textContent = toteList.length;
+      document.getElementById("totesLeft").textContent = toteList.length;
+      document.getElementById("totesFound").textContent = 0;
 
-    renderPreview(document.getElementById('previewTable'), rows);
-    updateDuplicateCheck();
-  } catch (err) {
-    statusEl.textContent = `Error: ${err.message}`;
+      status.textContent = "Ready to scan.";
+    } catch (e) {
+      status.textContent = `Error: ${e.message}`;
+    }
   }
-}
 
-document.getElementById('dupInput').addEventListener('input', updateDuplicateCheck);
+  function checkTote(id) {
+    const status = document.getElementById("status");
+    const idLower = id.trim().toLowerCase();
+    if (!idLower) {
+      status.textContent = "Please enter a tote ID.";
+      return;
+    }
 
-// Auto-load sheet on page open
-window.addEventListener('DOMContentLoaded', loadCsv);
+    if (foundSet.has(idLower)) {
+      status.textContent = `Tote "${id}" already found.`;
+      return;
+    }
+
+    if (toteList.includes(idLower)) {
+      foundSet.add(idLower);
+      let foundCount = foundSet.size;
+      document.getElementById("totesFound").textContent = foundCount;
+      document.getElementById("totesLeft").textContent = toteList.length - foundCount;
+      status.textContent = `Tote "${id}" found!`;
+    } else {
+      status.textContent = `Tote "${id}" not in list.`;
+    }
+  }
+
+  document.getElementById("toteInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      checkTote(e.target.value);
+      e.target.value = "";
+    }
+  });
+
+  window.addEventListener("load", loadTotes);
 </script>
+
 </body>
 </html>
-

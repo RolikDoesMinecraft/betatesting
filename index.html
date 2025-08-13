@@ -34,13 +34,8 @@
 <div class="content">
   <label for="toteInput">Scan or Enter Tote ID</label>
   <input id="toteInput" type="text" placeholder="Scan tote here" autofocus />
-  
-  <button id="reloadBtn">Reload Sheet</button>
 
-  <!-- Reload Sheet Button -->
-  <button id="reloadBtn" style="display:block; margin:20px auto; padding:12px 20px; font-size:1rem; background:#4caf50; color:#fff; border:none; border-radius:6px; cursor:pointer;">
-    Reload Sheet
-  </button>
+  <button id="reloadBtn">Reload Sheet</button>
 
   <div id="status" class="status-yellow">Loading totes…</div>
 
@@ -67,17 +62,8 @@
   let foundSet = new Set();
   let lastScanTime = 0;
 
-  // Robust CSV parser: handles all rows and columns
-  // CSV parser
   function csvToArray(text) {
-    return text
-      .trim()
-      .split(/\r?\n/)               // support \n and \r\n
-      .map(row => row.split(","))    // split columns
-      .map(row => row.map(cell => cell.trim())); // trim spaces
-      .split(/\r?\n/)
-      .map(row => row.split(","))
-      .map(row => row.map(cell => cell.trim()));
+    return text.trim().split(/\r?\n/).map(row => row.split(",").map(cell => cell.trim()));
   }
 
   async function loadTotes() {
@@ -87,14 +73,11 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
       const rows = csvToArray(text);
-
-      // Flatten all cells from all rows, remove empty, lowercase
-      // Flatten all cells
       toteList = rows.flatMap(r => r.filter(c => c)).map(c => c.toLowerCase());
-
       document.getElementById("totalTotes").textContent = toteList.length;
       document.getElementById("totesLeft").textContent = toteList.length;
       document.getElementById("totesFound").textContent = 0;
+      foundSet.clear();
       updateProgressBar();
       setStatus("Ready to scan.", "yellow");
     } catch (e) {
@@ -105,8 +88,7 @@
   function setStatus(msg, type) {
     const statusEl = document.getElementById("status");
     statusEl.textContent = msg;
-    statusEl.className = "";
-    statusEl.classList.add(`status-${type}`);
+    statusEl.className = `status-${type}`;
   }
 
   function playSound(url) {
@@ -122,7 +104,6 @@
 
   function processTote(id) {
     const now = Date.now();
-    if (now - lastScanTime < 3000) return; // Cooldown 3 seconds
     if (now - lastScanTime < 3000) return; // 3s cooldown
     lastScanTime = now;
 
@@ -139,9 +120,6 @@
 
     if (toteList.includes(idLower)) {
       foundSet.add(idLower);
-      const foundCount = foundSet.size;
-      document.getElementById("totesFound").textContent = foundCount;
-      document.getElementById("totesLeft").textContent = toteList.length - foundCount;
       document.getElementById("totesFound").textContent = foundSet.size;
       document.getElementById("totesLeft").textContent = toteList.length - foundSet.size;
       updateProgressBar();
@@ -161,10 +139,7 @@
     }
   }
 
-  // Reload button functionality
-  // Reload button
   document.getElementById("reloadBtn").addEventListener("click", () => {
-    foundSet.clear(); // reset found totes
     foundSet.clear();
     document.getElementById("totesFound").textContent = 0;
     document.getElementById("totesLeft").textContent = "–";
@@ -175,7 +150,7 @@
 
   window.addEventListener("load", () => {
     loadTotes();
-    setInterval(autoScan, 700); // auto-scan every 700ms
+    setInterval(autoScan, 700);
   });
 </script>
 

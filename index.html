@@ -1,168 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>TSI Locator BETA</title>
 <style>
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f5f5f5;
-    margin: 0;
-}
-.header {
-    background-color: #222;
-    color: white;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-}
-.header h1 {
-    margin: 0;
-    font-size: 20px;
-}
-.warehouse-container select, .warehouse-container button {
-    padding: 5px 10px;
-    font-size: 14px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    margin-left: 5px;
-}
-.container {
-    padding: 20px;
-}
-.counter {
-    font-size: 18px;
-    margin: 5px 0;
-}
-#progressBarContainer {
-    width: 100%;
-    background: #ddd;
-    height: 20px;
-    border-radius: 10px;
-    margin: 10px 0;
-}
-#progressBar {
-    height: 100%;
-    width: 0%;
-    background: green;
-    border-radius: 10px;
-    transition: width 0.5s ease;
-}
-#toteInput {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    font-size: 16px;
-    box-sizing: border-box;
-}
-footer {
-    margin-top: 20px;
-    text-align: center;
-    font-size: 12px;
-    color: #555;
-    padding: 10px 0;
-    border-top: 1px solid #ccc;
-    background: #f0f0f0;
-}
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#f4f6f8; color:#333; display:flex; flex-direction:column; min-height:100vh;}
+  .hero { background:#2f3e46; color:#fff; padding:20px; text-align:center; }
+  .hero h1 { margin:0; font-size:2rem; }
+  .content { flex:1; max-width:600px; margin:20px auto; background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+  label { display:block; margin-top:15px; font-weight:500; }
+  input[type=text] { width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; margin-top:5px; font-size:1rem; }
+  #status { margin:15px 0; font-weight:600; font-size:1.1rem; }
+  .status-green { color:green; }
+  .status-red { color:red; }
+  .status-yellow { color:orange; }
+  .metrics { display:flex; flex-wrap:wrap; gap:15px; margin:20px 0; }
+  .metric { background:#edf2f7; flex:1; min-width:150px; padding:20px; border-radius:4px; text-align:center; }
+  .metric .label { font-size:0.9rem; color:#666; }
+  .metric .value { font-size:1.8rem; font-weight:600; margin-top:5px; }
+  .progress-bar-container { background:#ddd; border-radius:6px; height:20px; overflow:hidden; margin:10px 0; }
+  .progress-bar { height:100%; background:#4caf50; width:0%; transition: width 0.5s ease; }
+  .footer { text-align:center; padding:10px; background:#2f3e46; color:#fff; font-size:0.9rem; }
+  button { margin-top:15px; padding:10px 15px; border:none; border-radius:4px; background:#4caf50; color:#fff; font-weight:600; cursor:pointer; }
 </style>
 </head>
 <body>
 
-<div class="header">
-    <h1>TSI Locator BETA</h1>
-    <div class="warehouse-container">
-        <select id="warehouseSelect">
-            <option value="DSA6">DSA6</option>
-            <option value="DSA2">DSA2</option>
-        </select>
-        <button id="loadWarehouseButton">Load Warehouse</button>
-    </div>
+<div class="hero">
+  <h1>TSI Locator BETA</h1>
 </div>
 
-<div class="container">
-    <div class="counter">Totes Left: <span id="totesLeft">0</span></div>
-    <div class="counter">Totes Found: <span id="totesFound">0</span></div>
-    <div id="progressBarContainer">
-        <div id="progressBar"></div>
-    </div>
-    <input type="text" id="toteInput" placeholder="Scan tote here" autocomplete="off" />
+<div class="content">
+  <label for="toteInput">Scan or Enter Tote ID</label>
+  <input id="toteInput" type="text" placeholder="Scan tote here" autofocus />
+  
+  <button id="reloadBtn">Reload Sheet</button>
+
+  <!-- Reload Sheet Button -->
+  <button id="reloadBtn" style="display:block; margin:20px auto; padding:12px 20px; font-size:1rem; background:#4caf50; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+    Reload Sheet
+  </button>
+
+  <div id="status" class="status-yellow">Loading totes…</div>
+
+  <div class="metrics">
+    <div class="metric"><div class="label">Total Totes</div><div id="totalTotes" class="value">–</div></div>
+    <div class="metric"><div class="label">Totes Left</div><div id="totesLeft" class="value">–</div></div>
+    <div class="metric"><div class="label">Totes Found</div><div id="totesFound" class="value">0</div></div>
+  </div>
+
+  <div class="progress-bar-container">
+    <div id="progressBar" class="progress-bar"></div>
+  </div>
+</div>
+
+<div class="footer">
+  Made by Rozimnic — TSI Locator BETA
 </div>
 
 <script>
-let totes = [];
-let foundTotes = new Set();
-let totesLeft = 0;
-let totesFound = 0;
-let autoscanInterval;
+  const foundSoundUrl = "https://www.soundjay.com/buttons/sounds/button-3.mp3";
+  const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vREoeSXV0fo1U5IXL63I0t4leYsoFRlezJTRt-rC4W9VZOA0wQi_53LqYfm4rpYVMQKghjsoQ9Mj41M/pub?output=csv";
 
-const warehouseLinks = {
-    'DSA6': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vREoeSXV0fo1U5IXL63I0t4leYsoFRlezJTRt-rC4W9VZOA0wQi_53LqYfm4rpYVMQKghjsoQ9Mj41M/pub?output=csv',
-    'DSA2': 'https://docs.google.com/spreadsheets/d/12lSWotP1mSt3o4JcXA--JJ5xthIlmQqpRHk_tBjv1V0/pub?output=csv'
-};
+  let toteList = [];
+  let foundSet = new Set();
+  let lastScanTime = 0;
 
-document.getElementById('loadWarehouseButton').addEventListener('click', () => {
-    const selectedWarehouse = document.getElementById('warehouseSelect').value;
-    loadCSV(warehouseLinks[selectedWarehouse]);
-});
+  // Robust CSV parser: handles all rows and columns
+  // CSV parser
+  function csvToArray(text) {
+    return text
+      .trim()
+      .split(/\r?\n/)               // support \n and \r\n
+      .map(row => row.split(","))    // split columns
+      .map(row => row.map(cell => cell.trim())); // trim spaces
+      .split(/\r?\n/)
+      .map(row => row.split(","))
+      .map(row => row.map(cell => cell.trim()));
+  }
 
-async function loadCSV(url) {
-    clearInterval(autoscanInterval);
-    totes = [];
-    foundTotes.clear();
-    totesLeft = 0;
-    totesFound = 0;
-    document.getElementById('totesLeft').innerText = totesLeft;
-    document.getElementById('totesFound').innerText = totesFound;
-    document.getElementById('progressBar').style.width = '0%';
-    document.getElementById('toteInput').value = '';
-
+  async function loadTotes() {
+    setStatus("Fetching tote list…", "yellow");
     try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const text = await response.text();
-        const rows = text.trim().split('\n');
-        rows.forEach(row => {
-            const value = row.trim();
-            if (value) totes.push(value);
-        });
-        totesLeft = totes.length;
-        document.getElementById('totesLeft').innerText = totesLeft;
-        startAutoScan();
-    } catch (err) {
-        alert('Failed to load CSV: ' + err);
+      const res = await fetch(sheetUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const rows = csvToArray(text);
+
+      // Flatten all cells from all rows, remove empty, lowercase
+      // Flatten all cells
+      toteList = rows.flatMap(r => r.filter(c => c)).map(c => c.toLowerCase());
+
+      document.getElementById("totalTotes").textContent = toteList.length;
+      document.getElementById("totesLeft").textContent = toteList.length;
+      document.getElementById("totesFound").textContent = 0;
+      updateProgressBar();
+      setStatus("Ready to scan.", "yellow");
+    } catch (e) {
+      setStatus(`Error: ${e.message}`, "red");
     }
-}
+  }
 
-function startAutoScan() {
-    autoscanInterval = setInterval(() => {
-        const input = document.getElementById('toteInput').value.trim();
-        if (input && totes.includes(input) && !foundTotes.has(input)) {
-            foundTotes.add(input);
-            totesFound++;
-            totesLeft--;
-            document.getElementById('totesLeft').innerText = totesLeft;
-            document.getElementById('totesFound').innerText = totesFound;
-            // Play beep sound (change URL in code)
-            const audio = new Audio('https://www.soundjay.com/button/beep-07.wav');
-            audio.play();
-        }
-        updateProgressBar();
-    }, 700);
-}
+  function setStatus(msg, type) {
+    const statusEl = document.getElementById("status");
+    statusEl.textContent = msg;
+    statusEl.className = "";
+    statusEl.classList.add(`status-${type}`);
+  }
 
-function updateProgressBar() {
-    const progress = totes.length ? (totesFound / totes.length) * 100 : 0;
-    document.getElementById('progressBar').style.width = progress + '%';
-}
+  function playSound(url) {
+    if (url) new Audio(url).play().catch(() => console.warn("Sound play failed"));
+  }
 
-// Initial load
-loadCSV(warehouseLinks['DSA6']);
+  function updateProgressBar() {
+    const total = toteList.length;
+    const found = foundSet.size;
+    const percent = total > 0 ? (found / total) * 100 : 0;
+    document.getElementById("progressBar").style.width = percent + "%";
+  }
+
+  function processTote(id) {
+    const now = Date.now();
+    if (now - lastScanTime < 3000) return; // Cooldown 3 seconds
+    if (now - lastScanTime < 3000) return; // 3s cooldown
+    lastScanTime = now;
+
+    const idLower = id.trim().toLowerCase();
+    if (!idLower) {
+      setStatus("Please scan a tote ID.", "yellow");
+      return;
+    }
+
+    if (foundSet.has(idLower)) {
+      setStatus(`Tote "${id}" already found.`, "yellow");
+      return;
+    }
+
+    if (toteList.includes(idLower)) {
+      foundSet.add(idLower);
+      const foundCount = foundSet.size;
+      document.getElementById("totesFound").textContent = foundCount;
+      document.getElementById("totesLeft").textContent = toteList.length - foundCount;
+      document.getElementById("totesFound").textContent = foundSet.size;
+      document.getElementById("totesLeft").textContent = toteList.length - foundSet.size;
+      updateProgressBar();
+      setStatus(`Tote "${id}" found!`, "green");
+      playSound(foundSoundUrl);
+    } else {
+      setStatus(`Tote "${id}" not in list.`, "red");
+    }
+  }
+
+  function autoScan() {
+    const inputEl = document.getElementById("toteInput");
+    const value = inputEl.value;
+    if (value.trim()) {
+      processTote(value);
+      inputEl.value = "";
+    }
+  }
+
+  // Reload button functionality
+  // Reload button
+  document.getElementById("reloadBtn").addEventListener("click", () => {
+    foundSet.clear(); // reset found totes
+    foundSet.clear();
+    document.getElementById("totesFound").textContent = 0;
+    document.getElementById("totesLeft").textContent = "–";
+    document.getElementById("totalTotes").textContent = "–";
+    updateProgressBar();
+    loadTotes();
+  });
+
+  window.addEventListener("load", () => {
+    loadTotes();
+    setInterval(autoScan, 700); // auto-scan every 700ms
+  });
 </script>
-
-<footer>
-    <p>TSI Locator BETA by Rozimnic</p>
-</footer>
 
 </body>
 </html>

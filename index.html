@@ -6,12 +6,15 @@
 <style>
     body {
         font-family: Arial, sans-serif;
-        padding: 20px;
         background-color: #f5f5f5;
+        margin: 0;
+        padding: 0;
     }
 
-    /* Flex container for title + warehouse selection */
     .header {
+        background-color: #222;
+        color: white;
+        padding: 10px 20px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -19,12 +22,24 @@
 
     h1 {
         margin: 0;
+        font-size: 20px;
     }
 
-    #warehouseSelect, #loadWarehouseButton {
+    .warehouse-container select, .warehouse-container button {
         padding: 5px 10px;
         font-size: 14px;
-        margin-left: 10px;
+        margin-left: 5px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+
+    .container {
+        padding: 20px;
+    }
+
+    .counter {
+        font-size: 18px;
+        margin: 5px 0;
     }
 
     #progressBarContainer {
@@ -43,30 +58,6 @@
         transition: width 0.3s ease;
     }
 
-    .tote {
-        margin: 2px;
-        display: inline-block;
-        padding: 5px 10px;
-        border-radius: 5px;
-        color: white;
-        font-weight: bold;
-    }
-
-    .found {
-        background-color: green;
-    }
-
-    .notFound {
-        background-color: red;
-    }
-
-    footer {
-        margin-top: 20px;
-        text-align: center;
-        font-size: 12px;
-        color: #555;
-    }
-
     #toteInput {
         width: 100%;
         padding: 10px;
@@ -74,13 +65,23 @@
         font-size: 16px;
         box-sizing: border-box;
     }
+
+    footer {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 12px;
+        color: #555;
+        padding: 10px 0;
+        border-top: 1px solid #ccc;
+        background: #f0f0f0;
+    }
 </style>
 </head>
 <body>
 
 <div class="header">
     <h1>TSI Locator BETA</h1>
-    <div>
+    <div class="warehouse-container">
         <select id="warehouseSelect">
             <option value="DSA6">DSA6</option>
             <option value="DSA2">DSA2</option>
@@ -89,40 +90,34 @@
     </div>
 </div>
 
-<div>
-    <p>Totes Left: <span id="totesLeft">0</span></p>
-    <p>Totes Found: <span id="totesFound">0</span></p>
+<div class="container">
+    <div class="counter">Totes Left: <span id="totesLeft">0</span></div>
+    <div class="counter">Totes Found: <span id="totesFound">0</span></div>
+
+    <div id="progressBarContainer">
+        <div id="progressBar"></div>
+    </div>
+
+    <input type="text" id="toteInput" placeholder="Scan tote here" autocomplete="off" />
 </div>
-
-<div id="progressBarContainer">
-    <div id="progressBar"></div>
-</div>
-
-<input type="text" id="toteInput" placeholder="Scan tote here" />
-
-<div id="toteList"></div>
 
 <script>
-    // ===================== Variables =====================
     let totes = [];
     let foundTotes = new Set();
     let totesLeft = 0;
     let totesFound = 0;
     let autoscanInterval;
 
-    // Warehouse CSV URLs
     const warehouseLinks = {
         'DSA6': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vREoeSXV0fo1U5IXL63I0t4leYsoFRlezJTRt-rC4W9VZOA0wQi_53LqYfm4rpYVMQKghjsoQ9Mj41M/pub?output=csv',
         'DSA2': 'https://docs.google.com/spreadsheets/d/12lSWotP1mSt3o4JcXA--JJ5xthIlmQqpRHk_tBjv1V0/pub?output=csv'
     };
 
-    // ===================== Load Warehouse =====================
     document.getElementById('loadWarehouseButton').addEventListener('click', () => {
         const selectedWarehouse = document.getElementById('warehouseSelect').value;
         loadCSV(warehouseLinks[selectedWarehouse]);
     });
 
-    // ===================== Load CSV =====================
     async function loadCSV(url) {
         clearInterval(autoscanInterval);
 
@@ -133,7 +128,6 @@
 
         document.getElementById('totesLeft').innerText = totesLeft;
         document.getElementById('totesFound').innerText = totesFound;
-        document.getElementById('toteList').innerHTML = '';
         document.getElementById('progressBar').style.width = '0%';
         document.getElementById('toteInput').value = '';
 
@@ -151,21 +145,12 @@
             totesLeft = totes.length;
             document.getElementById('totesLeft').innerText = totesLeft;
 
-            const listDiv = document.getElementById('toteList');
-            totes.forEach(tote => {
-                const div = document.createElement('div');
-                div.innerText = tote;
-                div.className = 'tote notFound';
-                listDiv.appendChild(div);
-            });
-
             startAutoScan();
         } catch (err) {
             alert('Failed to load CSV: ' + err);
         }
     }
 
-    // ===================== Autoscan =====================
     function startAutoScan() {
         autoscanInterval = setInterval(() => {
             const input = document.getElementById('toteInput').value.trim();
@@ -177,12 +162,7 @@
                 document.getElementById('totesLeft').innerText = totesLeft;
                 document.getElementById('totesFound').innerText = totesFound;
 
-                const divs = document.getElementById('toteList').children;
-                for (let div of divs) {
-                    if (div.innerText === input) div.className = 'tote found';
-                }
-
-                // Play beep sound
+                // Play beep sound (can change URL in code)
                 const audio = new Audio('https://www.soundjay.com/button/beep-07.wav');
                 audio.play();
             }
@@ -191,13 +171,12 @@
         }, 700);
     }
 
-    // ===================== Progress Bar =====================
     function updateProgressBar() {
         const progress = totes.length ? (totesFound / totes.length) * 100 : 0;
         document.getElementById('progressBar').style.width = progress + '%';
     }
 
-    // ===================== Initial Load =====================
+    // Initial load
     loadCSV(warehouseLinks['DSA6']);
 </script>
 

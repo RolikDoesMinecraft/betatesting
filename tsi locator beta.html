@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Google Sheet Row Counter</title>
+  <style>
+    :root { --bg:#0b1020; --card:#121933; --ink:#e9ecf1; --muted:#9aa3b2; --brand:#7c9cff; --ok:#36d399; --warn:#f6c84c; --err:#ff6b6b; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:16px/1.4 system-ui, sans-serif; background:linear-gradient(120deg,#0b1020,#0e1330 55%,#0b1020); color:var(--ink); }
+    .wrap { max-width:1000px; margin:40px auto; padding:24px; }
+    .card { background:var(--card); border:1px solid #1f274a; border-radius:18px; padding:22px; }
+    h1 { margin:0 0 8px; font-size:32px; }
+    p.lead { margin:0 0 18px; color:var(--muted); }
+    label { display:block; font-weight:600; margin:16px 0 6px; }
+    input[type="text"] { width:100%; padding:12px; border-radius:12px; border:1px solid #2a3363; background:#0f1530; color:var(--ink); }
+    button { margin-top:12px; padding:12px 16px; border-radius:12px; background:var(--brand); color:#0a0f22; font-weight:800; cursor:pointer; border:0; }
+    .metrics { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:18px; }
+    .metric { background:#0f1530; border:1px solid #223064; border-radius:14px; padding:14px; }
+    .metric .label { color:var(--muted); font-size:12px; text-transform:uppercase; }
+    .metric .value { font-size:28px; font-weight:900; margin-top:6px; }
+    .ok { color:var(--ok); }
+    .warn { color:var(--warn); }
+    .err { color:var(--err); }
+    .status { margin-top:10px; min-height:22px; color:var(--muted); }
+    table { width:100%; border-collapse:collapse; }
+    th, td { border-bottom:1px solid #23325e; padding:8px 10px; font-size:14px; }
+    th { color:#cfd7ff; background:#121933; }
+    .preview { max-height:300px; overflow:auto; border:1px solid #223064; border-radius:12px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Google Sheet → Row Counter</h1>
+    <p class="lead">This sheet is hardcoded. Type something in the Duplicate Check box to reduce the total count if found.</p>
+
+    <label for="dupInput">Duplicate Check Value</label>
+    <input id="dupInput" type="text" placeholder="Type to check duplicates" />
+
+    <div id="status" class="status">Loading sheet…</div>
+
+    <div class="metrics">
+      <div class="metric"><div class="label">Rows (incl. header)</div><div id="rowsTotal" class="value">—</div></div>
+      <div class="metric"><div class="label">Rows (excl. header & empty)</div><div id="rowsClean" class="value ok">—</div></div>
+      <div class="metric"><div class="label">Filled cells</div><div id="cellsFilled" class="value warn">—</div></div>
+    </div>
+
+    <details>
+      <summary>Preview</summary>
+      <div class="preview"><table id="previewTable"></table></div>
+    </details>
+  </div>
+</div>
+
+<script>
+const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vREoeSXV0fo1U5IXL63I0t4leYsoFRlezJTRt-rC4W9VZOA0wQi_53LqYfm4rpYVMQKghjsoQ9Mj41M/pub?output=csv";
+let loadedRows = [];
+
+function csvToArray(text) {
+  return text.trim().split("\n").map(r => r.split(","));
+}
+
+function isRowEmpty(r) { return !r || r.every(cell => String(cell).trim() === ""); }
+
+function renderPreview(tableEl, rows) {
+  tableEl.innerHTML = "";
+  if (!rows.length) return;
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  rows[0].forEach(h => { const th = document.createElement('th'); th.textContent = h; trh.appendChild(th); });
+  thead.appendChild(trh);
+  tableEl.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  rows.slice(1, 201).forEach(r => {
+    const tr = document.createElement('tr');
+    r.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+    tbody.appendChild(tr);
+  });
+  tableEl.appendChild(tbody);
+}
+
+function updateDuplicateCheck() {
+  const value = document.getElementById('dupInput').value.trim().toLowerCase();
+  const rowsTotalEl = document.getElementById('rowsTotal');
+  if (!loadedRows.length) return;
+  const total = loadedRows.length;
+  if (!value) {
+    rowsTotalEl.textContent = total;
+    return;
+  }
+  let matches = 0;
+  loadedRows.forEach(row => {
+    row.forEach(cell => {
+      if (String(cell).trim().toLowerCase() === value) matches++;
+    });
+  });
+  rowsTotalEl.textContent = total - matches;
+}
+
+async function loadCsv() {
+  const statusEl = document.getElementById('status');
+  statusEl.textContent = 'Fetching CSV…';
+  try {
+    const res = await fetch(sheetUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const rows = csvToArray(text);
+    loadedRows = rows;
+
+    const dataRows = rows.slice(1);
+    const nonEmptyRows = dataRows.filter(r => !isRowEmpty(r));
+    const filledCells = dataRows.reduce((acc, r) => acc + r.filter(c => String(c).trim() !== "").length, 0);
+
+    document.getElementById('rowsTotal').textContent = rows.length;
+    document.getElementById('rowsClean').textContent = nonEmptyRows.length;
+    document.getElementById('cellsFilled').textContent = filledCells;
+    statusEl.textContent = `Loaded ${rows.length} rows`;
+
+    renderPreview(document.getElementById('previewTable'), rows);
+    updateDuplicateCheck();
+  } catch (err) {
+    statusEl.textContent = `Error: ${err.message}`;
+  }
+}
+
+document.getElementById('dupInput').addEventListener('input', updateDuplicateCheck);
+
+// Auto-load sheet on page open
+window.addEventListener('DOMContentLoaded', loadCsv);
+</script>
+</body>
+</html>

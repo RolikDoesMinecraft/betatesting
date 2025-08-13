@@ -11,7 +11,10 @@
   .content { flex:1; max-width:600px; margin:20px auto; background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
   label { display:block; margin-top:15px; font-weight:500; }
   input[type=text] { width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; margin-top:5px; font-size:1rem; }
-  #status { margin:15px 0; color:#555; font-weight:500; }
+  #status { margin:15px 0; font-weight:600; font-size:1.1rem; }
+  .status-green { color:green; }
+  .status-red { color:red; }
+  .status-yellow { color:orange; }
   .metrics { display:flex; flex-wrap:wrap; gap:15px; margin:20px 0; }
   .metric { background:#edf2f7; flex:1; min-width:150px; padding:20px; border-radius:4px; text-align:center; }
   .metric .label { font-size:0.9rem; color:#666; }
@@ -27,9 +30,9 @@
 
 <div class="content">
   <label for="toteInput">Scan or Enter Tote ID</label>
-  <input id="toteInput" type="text" placeholder="Enter tote ID and press Enter" />
+  <input id="toteInput" type="text" placeholder="Scan tote here" autofocus />
 
-  <div id="status">Loading totes…</div>
+  <div id="status" class="status-yellow">Loading totes…</div>
 
   <div class="metrics">
     <div class="metric"><div class="label">Total Totes</div><div id="totalTotes" class="value">–</div></div>
@@ -47,6 +50,7 @@
 
   let toteList = [];
   let foundSet = new Set();
+  let lastScanTime = 0;
 
   function csvToArray(text) {
     return text.trim().split("\n").map(r => r.split(","));
@@ -61,29 +65,40 @@
       const text = await res.text();
       const rows = csvToArray(text);
 
-      // Get all tote IDs from first column (excluding header)
       toteList = rows.slice(1).map(r => String(r[0]).trim().toLowerCase()).filter(id => id);
 
       document.getElementById("totalTotes").textContent = toteList.length;
       document.getElementById("totesLeft").textContent = toteList.length;
       document.getElementById("totesFound").textContent = 0;
 
-      status.textContent = "Ready to scan.";
+      setStatus("Ready to scan.", "yellow");
     } catch (e) {
-      status.textContent = `Error: ${e.message}`;
+      setStatus(`Error: ${e.message}`, "red");
     }
   }
 
-  function checkTote(id) {
-    const status = document.getElementById("status");
+  function setStatus(msg, type) {
+    const statusEl = document.getElementById("status");
+    statusEl.textContent = msg;
+    statusEl.className = "";
+    statusEl.classList.add(`status-${type}`);
+  }
+
+  function processTote(id) {
+    const now = Date.now();
+    if (now - lastScanTime < 3000) {
+      return; // Cooldown active
+    }
+    lastScanTime = now;
+
     const idLower = id.trim().toLowerCase();
     if (!idLower) {
-      status.textContent = "Please enter a tote ID.";
+      setStatus("Please scan a tote ID.", "yellow");
       return;
     }
 
     if (foundSet.has(idLower)) {
-      status.textContent = `Tote "${id}" already found.`;
+      setStatus(`Tote "${id}" already found.`, "yellow");
       return;
     }
 
@@ -92,20 +107,25 @@
       let foundCount = foundSet.size;
       document.getElementById("totesFound").textContent = foundCount;
       document.getElementById("totesLeft").textContent = toteList.length - foundCount;
-      status.textContent = `Tote "${id}" found!`;
+      setStatus(`Tote "${id}" found!`, "green");
     } else {
-      status.textContent = `Tote "${id}" not in list.`;
+      setStatus(`Tote "${id}" not in list.`, "red");
     }
   }
 
-  document.getElementById("toteInput").addEventListener("keydown", e => {
-    if (e.key === "Enter") {
-      checkTote(e.target.value);
-      e.target.value = "";
+  function autoScan() {
+    const inputEl = document.getElementById("toteInput");
+    const value = inputEl.value;
+    if (value.trim()) {
+      processTote(value);
+      inputEl.value = ""; // Clear after scan
     }
-  });
+  }
 
-  window.addEventListener("load", loadTotes);
+  window.addEventListener("load", () => {
+    loadTotes();
+    setInterval(autoScan, 3000); // Every 3 seconds
+  });
 </script>
 
 </body>

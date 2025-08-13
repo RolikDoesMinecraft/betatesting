@@ -59,8 +59,13 @@
   let foundSet = new Set();
   let lastScanTime = 0;
 
+  // Robust CSV parser: handles all rows and columns
   function csvToArray(text) {
-    return text.trim().split("\n").map(r => r.split(","));
+    return text
+      .trim()
+      .split(/\r?\n/)               // support \n and \r\n
+      .map(row => row.split(","))    // split columns
+      .map(row => row.map(cell => cell.trim())); // trim spaces
   }
 
   async function loadTotes() {
@@ -69,18 +74,15 @@
       const res = await fetch(sheetUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
-
-      // Split CSV into rows and columns, flatten all cells
       const rows = csvToArray(text);
-      toteList = rows
-        .flatMap(row => row.map(cell => String(cell).trim().toLowerCase()))
-        .filter(id => id);
+
+      // Flatten all cells from all rows, remove empty, lowercase
+      toteList = rows.flatMap(r => r.filter(c => c)).map(c => c.toLowerCase());
 
       document.getElementById("totalTotes").textContent = toteList.length;
       document.getElementById("totesLeft").textContent = toteList.length;
       document.getElementById("totesFound").textContent = 0;
       updateProgressBar();
-
       setStatus("Ready to scan.", "yellow");
     } catch (e) {
       setStatus(`Error: ${e.message}`, "red");
@@ -95,9 +97,7 @@
   }
 
   function playSound(url) {
-    if (url) {
-      new Audio(url).play().catch(() => console.warn("Sound play failed"));
-    }
+    if (url) new Audio(url).play().catch(() => console.warn("Sound play failed"));
   }
 
   function updateProgressBar() {

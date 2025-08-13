@@ -34,8 +34,11 @@
 <div class="content">
   <label for="toteInput">Scan or Enter Tote ID</label>
   <input id="toteInput" type="text" placeholder="Scan tote here" autofocus />
-  
-  <button id="reloadBtn">Reload Sheet</button>
+
+  <!-- Reload Sheet Button -->
+  <button id="reloadBtn" style="display:block; margin:20px auto; padding:12px 20px; font-size:1rem; background:#4caf50; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+    Reload Sheet
+  </button>
 
   <div id="status" class="status-yellow">Loading totes…</div>
 
@@ -62,13 +65,13 @@
   let foundSet = new Set();
   let lastScanTime = 0;
 
-  // Robust CSV parser: handles all rows and columns
+  // CSV parser
   function csvToArray(text) {
     return text
       .trim()
-      .split(/\r?\n/)               // support \n and \r\n
-      .map(row => row.split(","))    // split columns
-      .map(row => row.map(cell => cell.trim())); // trim spaces
+      .split(/\r?\n/)
+      .map(row => row.split(","))
+      .map(row => row.map(cell => cell.trim()));
   }
 
   async function loadTotes() {
@@ -79,7 +82,7 @@
       const text = await res.text();
       const rows = csvToArray(text);
 
-      // Flatten all cells from all rows, remove empty, lowercase
+      // Flatten all cells
       toteList = rows.flatMap(r => r.filter(c => c)).map(c => c.toLowerCase());
 
       document.getElementById("totalTotes").textContent = toteList.length;
@@ -112,7 +115,7 @@
 
   function processTote(id) {
     const now = Date.now();
-    if (now - lastScanTime < 3000) return; // Cooldown 3 seconds
+    if (now - lastScanTime < 3000) return; // 3s cooldown
     lastScanTime = now;
 
     const idLower = id.trim().toLowerCase();
@@ -128,9 +131,8 @@
 
     if (toteList.includes(idLower)) {
       foundSet.add(idLower);
-      const foundCount = foundSet.size;
-      document.getElementById("totesFound").textContent = foundCount;
-      document.getElementById("totesLeft").textContent = toteList.length - foundCount;
+      document.getElementById("totesFound").textContent = foundSet.size;
+      document.getElementById("totesLeft").textContent = toteList.length - foundSet.size;
       updateProgressBar();
       setStatus(`Tote "${id}" found!`, "green");
       playSound(foundSoundUrl);
@@ -148,9 +150,9 @@
     }
   }
 
-  // Reload button functionality
+  // Reload button
   document.getElementById("reloadBtn").addEventListener("click", () => {
-    foundSet.clear(); // reset found totes
+    foundSet.clear();
     document.getElementById("totesFound").textContent = 0;
     document.getElementById("totesLeft").textContent = "–";
     document.getElementById("totalTotes").textContent = "–";

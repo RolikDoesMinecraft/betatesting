@@ -19,6 +19,8 @@
   .metric { background:#edf2f7; flex:1; min-width:150px; padding:20px; border-radius:4px; text-align:center; }
   .metric .label { font-size:0.9rem; color:#666; }
   .metric .value { font-size:1.8rem; font-weight:600; margin-top:5px; }
+  .progress-bar-container { background:#ddd; border-radius:6px; height:20px; overflow:hidden; margin:10px 0; }
+  .progress-bar { height:100%; background:#4caf50; width:0%; transition: width 0.5s ease; }
   .footer { text-align:center; padding:10px; background:#2f3e46; color:#fff; font-size:0.9rem; }
 </style>
 </head>
@@ -39,6 +41,10 @@
     <div class="metric"><div class="label">Totes Left</div><div id="totesLeft" class="value">–</div></div>
     <div class="metric"><div class="label">Totes Found</div><div id="totesFound" class="value">0</div></div>
   </div>
+
+  <div class="progress-bar-container">
+    <div id="progressBar" class="progress-bar"></div>
+  </div>
 </div>
 
 <div class="footer">
@@ -46,9 +52,7 @@
 </div>
 
 <script>
-  // Set your sound file here
   const foundSoundUrl = "https://www.soundjay.com/buttons/sounds/button-3.mp3";
-
   const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vREoeSXV0fo1U5IXL63I0t4leYsoFRlezJTRt-rC4W9VZOA0wQi_53LqYfm4rpYVMQKghjsoQ9Mj41M/pub?output=csv";
 
   let toteList = [];
@@ -67,11 +71,13 @@
       const text = await res.text();
       const rows = csvToArray(text);
 
-      toteList = rows.slice(1).map(r => String(r[0]).trim().toLowerCase()).filter(id => id);
+      // NOW we include row 1
+      toteList = rows.map(r => String(r[0]).trim().toLowerCase()).filter(id => id);
 
       document.getElementById("totalTotes").textContent = toteList.length;
       document.getElementById("totesLeft").textContent = toteList.length;
       document.getElementById("totesFound").textContent = 0;
+      updateProgressBar();
 
       setStatus("Ready to scan.", "yellow");
     } catch (e) {
@@ -92,10 +98,17 @@
     }
   }
 
+  function updateProgressBar() {
+    const total = toteList.length;
+    const found = foundSet.size;
+    const percent = total > 0 ? (found / total) * 100 : 0;
+    document.getElementById("progressBar").style.width = percent + "%";
+  }
+
   function processTote(id) {
     const now = Date.now();
     if (now - lastScanTime < 3000) {
-      return; // Cooldown active
+      return; // Cooldown
     }
     lastScanTime = now;
 
@@ -115,6 +128,7 @@
       let foundCount = foundSet.size;
       document.getElementById("totesFound").textContent = foundCount;
       document.getElementById("totesLeft").textContent = toteList.length - foundCount;
+      updateProgressBar();
       setStatus(`Tote "${id}" found!`, "green");
       playSound(foundSoundUrl);
     } else {
@@ -127,7 +141,7 @@
     const value = inputEl.value;
     if (value.trim()) {
       processTote(value);
-      inputEl.value = ""; // Clear after scan
+      inputEl.value = ""; 
     }
   }
 

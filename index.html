@@ -59,33 +59,33 @@
   let foundSet = new Set();
   let lastScanTime = 0;
 
- function csvToArray(text) {
-  return text.trim().split("\n").map(r => r.split(","));
-}
-
-async function loadTotes() {
-  setStatus("Fetching tote list…", "yellow");
-  try {
-    const res = await fetch(sheetUrl);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
-    const rows = csvToArray(text);
-
-    // Flatten all cells from all rows into one list of tote IDs
-    toteList = rows
-      .flatMap(row => row.map(cell => String(cell).trim().toLowerCase()))
-      .filter(id => id);
-
-    document.getElementById("totalTotes").textContent = toteList.length;
-    document.getElementById("totesLeft").textContent = toteList.length;
-    document.getElementById("totesFound").textContent = 0;
-    updateProgressBar();
-
-    setStatus("Ready to scan.", "yellow");
-  } catch (e) {
-    setStatus(`Error: ${e.message}`, "red");
+  function csvToArray(text) {
+    return text.trim().split("\n").map(r => r.split(","));
   }
-}
+
+  async function loadTotes() {
+    setStatus("Fetching tote list…", "yellow");
+    try {
+      const res = await fetch(sheetUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+
+      // Split CSV into rows and columns, flatten all cells
+      const rows = csvToArray(text);
+      toteList = rows
+        .flatMap(row => row.map(cell => String(cell).trim().toLowerCase()))
+        .filter(id => id);
+
+      document.getElementById("totalTotes").textContent = toteList.length;
+      document.getElementById("totesLeft").textContent = toteList.length;
+      document.getElementById("totesFound").textContent = 0;
+      updateProgressBar();
+
+      setStatus("Ready to scan.", "yellow");
+    } catch (e) {
+      setStatus(`Error: ${e.message}`, "red");
+    }
+  }
 
   function setStatus(msg, type) {
     const statusEl = document.getElementById("status");
@@ -109,9 +109,7 @@ async function loadTotes() {
 
   function processTote(id) {
     const now = Date.now();
-    if (now - lastScanTime < 3000) {
-      return; // Cooldown
-    }
+    if (now - lastScanTime < 3000) return; // Cooldown 3 seconds
     lastScanTime = now;
 
     const idLower = id.trim().toLowerCase();
@@ -127,7 +125,7 @@ async function loadTotes() {
 
     if (toteList.includes(idLower)) {
       foundSet.add(idLower);
-      let foundCount = foundSet.size;
+      const foundCount = foundSet.size;
       document.getElementById("totesFound").textContent = foundCount;
       document.getElementById("totesLeft").textContent = toteList.length - foundCount;
       updateProgressBar();
@@ -143,16 +141,15 @@ async function loadTotes() {
     const value = inputEl.value;
     if (value.trim()) {
       processTote(value);
-      inputEl.value = ""; 
+      inputEl.value = "";
     }
   }
 
   window.addEventListener("load", () => {
     loadTotes();
-    setInterval(autoScan, 700); // Scan every 700ms
+    setInterval(autoScan, 700); // auto-scan every 700ms
   });
 </script>
 
 </body>
 </html>
-

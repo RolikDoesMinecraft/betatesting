@@ -67,23 +67,26 @@
   }
 
   async function loadTotes() {
-    setStatus("Fetching tote list…", "yellow");
-    try {
-      const res = await fetch(sheetUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      const rows = csvToArray(text);
-      toteList = rows.flatMap(r => r.filter(c => c)).map(c => c.toLowerCase());
-      document.getElementById("totalTotes").textContent = toteList.length;
-      document.getElementById("totesLeft").textContent = toteList.length;
-      document.getElementById("totesFound").textContent = 0;
-      foundSet.clear();
-      updateProgressBar();
-      setStatus("Ready to scan.", "yellow");
-    } catch (e) {
-      setStatus(`Error: ${e.message}`, "red");
-    }
+  setStatus("Fetching tote list…", "yellow");
+  try {
+    const res = await fetch(sheetUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const rows = csvToArray(text);
+    toteList = rows.flatMap(r => r.filter(c => c)).map(c => c.toLowerCase());
+
+    // Remove found totes that no longer exist
+    foundSet = new Set([...foundSet].filter(t => toteList.includes(t)));
+
+    document.getElementById("totalTotes").textContent = toteList.length;
+    document.getElementById("totesFound").textContent = foundSet.size;
+    document.getElementById("totesLeft").textContent = toteList.length - foundSet.size;
+    updateProgressBar();
+    setStatus("Ready to scan.", "yellow");
+  } catch (e) {
+    setStatus(`Error: ${e.message}`, "red");
   }
+}
 
   function setStatus(msg, type) {
     const statusEl = document.getElementById("status");
@@ -156,3 +159,4 @@
 
 </body>
 </html>
+
